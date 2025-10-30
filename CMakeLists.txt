@@ -1,16 +1,16 @@
-cmake_minimum_required(VERSION 3.12)
-project(geometry)
+cmake_minimum_required(VERSION 3.10)
+project(geom)
 
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(GTest REQUIRED)
 
-add_executable(main_app main.cpp)
-add_executable(test_app tests.cpp)
+add_executable(app main.cpp)
+add_executable(tests tests.cpp)
 
-target_link_libraries(test_app GTest::gtest GTest::gtest_main)
+target_link_libraries(tests GTest::gtest GTest::gtest_main)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(main_app PRIVATE -Wall -Wextra)
-    target_compile_options(test_app PRIVATE -Wall -Wextra)
+    target_compile_options(app PRIVATE -Wall)
+    target_compile_options(tests PRIVATE -Wall)
 endif()
