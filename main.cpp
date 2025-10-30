@@ -1,209 +1,188 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include <memory>
 
-struct Tchk {
-    double dx, dy;
-    Tchk() : dx(0), dy(0) {}
-    Tchk(double xx, double yy) : dx(xx), dy(yy) {}
+struct Tch {
+    double x_, y_;
+    Tch() { x_ = 0; y_ = 0; }
+    Tch(double x, double y) { x_ = x; y_ = y; }
     
-    bool eq(const Tchk& t) const {
-        return fabs(dx - t.dx) < 0.0001 && fabs(dy - t.dy) < 0.0001;
+    bool operator==(const Tch& o) const {
+        return std::fabs(x_ - o.x_) < 1e-7 && std::fabs(y_ - o.y_) < 1e-7;
     }
 };
 
-class Fig {
+class Fg {
 public:
-    virtual ~Fig() {}
-    virtual Tchk cntr() const = 0;
-    virtual double sqr() const = 0;
-    virtual bool same(const Fig* f) const = 0;
-    virtual Fig* cpy() const = 0;
-    virtual void info() const = 0;
+    virtual ~Fg() = default;
+    virtual Tch get_c() const = 0;
+    virtual double get_s() const = 0;
+    virtual Fg* make_copy() const = 0;
+    virtual bool is_same(const Fg* o) const = 0;
 };
 
-class Rmb : public Fig {
-    Tchk p1, p2, p3, p4;
+class Rb : public Fg {
+    Tch a_, b_, c_, d_;
 
 public:
-    Rmb() {}
-    Rmb(Tchk a, Tchk b, Tchk c, Tchk d) : p1(a), p2(b), p3(c), p4(d) {}
+    Rb() = default;
+    Rb(Tch a, Tch b, Tch c, Tch d) : a_(a), b_(b), c_(c), d_(d) {}
 
-    Fig* cpy() const override { 
-        return new Rmb(*this); 
+    Fg* make_copy() const override { 
+        return new Rb(*this); 
     }
 
-    Tchk cntr() const override {
-        return Tchk((p1.dx + p3.dx) / 2, (p1.dy + p3.dy) / 2);
+    Tch get_c() const override {
+        return Tch((a_.x_ + c_.x_) / 2.0, (a_.y_ + c_.y_) / 2.0);
     }
 
-    double sqr() const override {
-        double dd1 = sqrt(pow(p1.dx - p3.dx, 2) + pow(p1.dy - p3.dy, 2));
-        double dd2 = sqrt(pow(p2.dx - p4.dx, 2) + pow(p2.dy - p4.dy, 2));
-        return dd1 * dd2 * 0.5;
+    double get_s() const override {
+        double ac = std::sqrt((a_.x_ - c_.x_)*(a_.x_ - c_.x_) + (a_.y_ - c_.y_)*(a_.y_ - c_.y_));
+        double bd = std::sqrt((b_.x_ - d_.x_)*(b_.x_ - d_.x_) + (b_.y_ - d_.y_)*(b_.y_ - d_.y_));
+        return ac * bd / 2.0;
     }
 
-    bool same(const Fig* f) const override {
-        auto r = dynamic_cast<const Rmb*>(f);
-        if (!r) return 0;
-        return p1.eq(r->p1) && p2.eq(r->p2) && p3.eq(r->p3) && p4.eq(r->p4);
-    }
-
-    void info() const override {
-        std::cout << "Rmb: (" << p1.dx << "," << p1.dy << ") "
-                  << "(" << p2.dx << "," << p2.dy << ") "
-                  << "(" << p3.dx << "," << p3.dy << ") "
-                  << "(" << p4.dx << "," << p4.dy << ")\n";
-    }
-};
-
-class Png : public Fig {
-    std::vector<Tchk> pts;
-
-public:
-    Png() : pts(5) {}
-    Png(const std::vector<Tchk>& t) : pts(t) {}
-
-    Fig* cpy() const override { 
-        return new Png(*this); 
-    }
-
-    Tchk cntr() const override {
-        Tchk c;
-        for (const auto& p : pts) {
-            c.dx += p.dx;
-            c.dy += p.dy;
+    bool is_same(const Fg* o) const override {
+        if (auto p = dynamic_cast<const Rb*>(o)) {
+            return a_ == p->a_ && b_ == p->b_ && c_ == p->c_ && d_ == p->d_;
         }
-        c.dx /= pts.size();
-        c.dy /= pts.size();
+        return false;
+    }
+};
+
+class Pt : public Fg {
+    std::vector<Tch> pts_;
+
+public:
+    Pt() : pts_(5) {}
+    Pt(std::vector<Tch> p) : pts_(std::move(p)) {}
+
+    Fg* make_copy() const override { 
+        return new Pt(*this); 
+    }
+
+    Tch get_c() const override {
+        Tch c;
+        for (const auto& p : pts_) {
+            c.x_ += p.x_;
+            c.y_ += p.y_;
+        }
+        c.x_ /= pts_.size();
+        c.y_ /= pts_.size();
         return c;
     }
 
-    double sqr() const override {
-        double res = 0;
-        int n = pts.size();
+    double get_s() const override {
+        double sum = 0.0;
+        int n = pts_.size();
         for (int i = 0; i < n; i++) {
             int j = (i + 1) % n;
-            res += pts[i].dx * pts[j].dy - pts[j].dx * pts[i].dy;
+            sum += pts_[i].x_ * pts_[j].y_ - pts_[j].x_ * pts_[i].y_;
         }
-        return fabs(res) * 0.5;
+        return std::abs(sum) / 2.0;
     }
 
-    bool same(const Fig* f) const override {
-        auto p = dynamic_cast<const Png*>(f);
-        if (!p || pts.size() != p->pts.size()) return 0;
-        for (size_t i = 0; i < pts.size(); i++) {
-            if (!pts[i].eq(p->pts[i])) return 0;
+    bool is_same(const Fg* o) const override {
+        if (auto p = dynamic_cast<const Pt*>(o)) {
+            return pts_ == p->pts_;
         }
-        return 1;
-    }
-
-    void info() const override {
-        std::cout << "Png with " << pts.size() << " points\n";
+        return false;
     }
 };
 
-class Shg : public Fig {
-    std::vector<Tchk> pts;
+class Hx : public Fg {
+    std::vector<Tch> pts_;
 
 public:
-    Shg() : pts(6) {}
-    Shg(const std::vector<Tchk>& t) : pts(t) {}
+    Hx() : pts_(6) {}
+    Hx(std::vector<Tch> p) : pts_(std::move(p)) {}
 
-    Fig* cpy() const override { 
-        return new Shg(*this); 
+    Fg* make_copy() const override { 
+        return new Hx(*this); 
     }
 
-    Tchk cntr() const override {
-        Tchk c;
-        for (const auto& p : pts) {
-            c.dx += p.dx;
-            c.dy += p.dy;
+    Tch get_c() const override {
+        Tch c;
+        for (const auto& p : pts_) {
+            c.x_ += p.x_;
+            c.y_ += p.y_;
         }
-        c.dx /= pts.size();
-        c.dy /= pts.size();
+        c.x_ /= pts_.size();
+        c.y_ /= pts_.size();
         return c;
     }
 
-    double sqr() const override {
-        double res = 0;
-        int n = pts.size();
+    double get_s() const override {
+        double sum = 0.0;
+        int n = pts_.size();
         for (int i = 0; i < n; i++) {
             int j = (i + 1) % n;
-            res += pts[i].dx * pts[j].dy - pts[j].dx * pts[i].dy;
+            sum += pts_[i].x_ * pts_[j].y_ - pts_[j].x_ * pts_[i].y_;
         }
-        return fabs(res) * 0.5;
+        return std::abs(sum) / 2.0;
     }
 
-    bool same(const Fig* f) const override {
-        auto h = dynamic_cast<const Shg*>(f);
-        if (!h || pts.size() != h->pts.size()) return 0;
-        for (size_t i = 0; i < pts.size(); i++) {
-            if (!pts[i].eq(h->pts[i])) return 0;
+    bool is_same(const Fg* o) const override {
+        if (auto p = dynamic_cast<const Hx*>(o)) {
+            return pts_ == p->pts_;
         }
-        return 1;
-    }
-
-    void info() const override {
-        std::cout << "Shg with " << pts.size() << " points\n";
+        return false;
     }
 };
 
-class FArr {
-    std::vector<Fig*> arr;
+class Col {
+    std::vector<Fg*> items;
 
 public:
-    void add(Fig* f) {
-        arr.push_back(f);
+    void add(Fg* f) {
+        items.push_back(f);
     }
 
-    void del(int idx) {
-        if (idx >= 0 && idx < arr.size()) {
-            delete arr[idx];
-            arr.erase(arr.begin() + idx);
+    void remove(int i) {
+        if (i >= 0 && i < items.size()) {
+            delete items[i];
+            items.erase(items.begin() + i);
         }
     }
 
-    double total() const {
-        double sum = 0;
-        for (auto f : arr) {
-            sum += f->sqr();
+    double total_s() const {
+        double s = 0.0;
+        for (auto f : items) {
+            s += f->get_s();
         }
-        return sum;
+        return s;
     }
 
-    int sz() const {
-        return arr.size();
+    size_t count() const {
+        return items.size();
     }
 
-    void show() const {
-        for (auto f : arr) {
-            f->info();
-        }
-    }
-
-    ~FArr() {
-        for (auto f : arr) {
+    ~Col() {
+        for (auto f : items) {
             delete f;
         }
     }
 };
 
 int main() {
-    FArr fa;
+    Col c;
     
-    Tchk a1(0,0), a2(3,4), a3(6,0), a4(3,-4);
-    fa.add(new Rmb(a1,a2,a3,a4));
+    Tch p1(0,0), p2(3,4), p3(6,0), p4(3,-4);
+    c.add(new Rb(p1, p2, p3, p4));
     
-    std::vector<Tchk> v1 = {Tchk(1,1), Tchk(3,1), Tchk(4,3), Tchk(2,5), Tchk(0,3)};
-    fa.add(new Png(v1));
+    std::vector<Tch> pent_points = {
+        Tch(0,0), Tch(2,0), Tch(3,1), 
+        Tch(2,2), Tch(0,2)
+    };
+    c.add(new Pt(pent_points));
     
-    std::vector<Tchk> v2 = {Tchk(0,0), Tchk(2,0), Tchk(3,1), Tchk(2,2), Tchk(0,2), Tchk(-1,1)};
-    fa.add(new Shg(v2));
+    std::vector<Tch> hex_points = {
+        Tch(0,0), Tch(2,0), Tch(3,1),
+        Tch(2,2), Tch(0,2), Tch(-1,1)
+    };
+    c.add(new Hx(hex_points));
     
-    fa.show();
-    std::cout << "Count: " << fa.sz() << " Total area: " << fa.total() << std::endl;
+    std::cout << "Figures: " << c.count() << " Area: " << c.total_s() << std::endl;
     
     return 0;
 }
