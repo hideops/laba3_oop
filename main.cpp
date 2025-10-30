@@ -3,193 +3,184 @@
 #include <cmath>
 #include <memory>
 
-struct Tochka {
-    double x, y;
-    Tochka() : x(0), y(0) {}
-    Tochka(double x_val, double y_val) : x(x_val), y(y_val) {}
+struct Tchk {
+    double dx, dy;
+    Tchk() : dx(0), dy(0) {}
+    Tchk(double xx, double yy) : dx(xx), dy(yy) {}
     
-    bool operator==(const Tochka& other) const {
-        return std::abs(x - other.x) < 1e-9 && std::abs(y - other.y) < 1e-9;
+    bool eq(const Tchk& t) const {
+        return fabs(dx - t.dx) < 0.0001 && fabs(dy - t.dy) < 0.0001;
     }
 };
 
-std::ostream& operator<<(std::ostream& os, const Tochka& t) {
-    return os << "(" << t.x << ", " << t.y << ")";
-}
-
-class Figura {
+class Fig {
 public:
-    virtual ~Figura() = default;
-    virtual Tochka centr() const = 0;
-    virtual double ploshad() const = 0;
-    virtual bool ravno(const Figura& other) const = 0;
-    virtual std::unique_ptr<Figura> klon() const = 0;
+    virtual ~Fig() {}
+    virtual Tchk cntr() const = 0;
+    virtual double sqr() const = 0;
+    virtual bool same(const Fig* f) const = 0;
+    virtual Fig* cpy() const = 0;
 };
 
-class Romb : public Figura {
-private:
-    Tochka a, b, c, d;
+class Rmb : public Fig {
+    Tchk p1, p2, p3, p4;
 
 public:
-    Romb() = default;
-    Romb(Tochka a_, Tochka b_, Tochka c_, Tochka d_) : a(a_), b(b_), c(c_), d(d_) {}
+    Rmb() {}
+    Rmb(Tchk a, Tchk b, Tchk c, Tchk d) : p1(a), p2(b), p3(c), p4(d) {}
 
-    std::unique_ptr<Figura> klon() const override { 
-        return std::make_unique<Romb>(*this); 
+    Fig* cpy() const override { 
+        return new Rmb(*this); 
     }
 
-    Tochka centr() const override {
-        return Tochka((a.x + c.x) / 2, (a.y + c.y) / 2);
+    Tchk cntr() const override {
+        return Tchk((p1.dx + p3.dx) / 2, (p1.dy + p3.dy) / 2);
     }
 
-    double ploshad() const override {
-        double d1 = std::sqrt(std::pow(a.x - c.x, 2) + std::pow(a.y - c.y, 2));
-        double d2 = std::sqrt(std::pow(b.x - d.x, 2) + std::pow(b.y - d.y, 2));
-        return (d1 * d2) / 2;
+    double sqr() const override {
+        double dd1 = hypot(p1.dx - p3.dx, p1.dy - p3.dy);
+        double dd2 = hypot(p2.dx - p4.dx, p2.dy - p4.dy);
+        return dd1 * dd2 * 0.5;
     }
 
-    bool ravno(const Figura& other) const override {
-        auto* r = dynamic_cast<const Romb*>(&other);
-        if (!r) return false;
-        return a == r->a && b == r->b && c == r->c && d == r->d;
+    bool same(const Fig* f) const override {
+        auto r = dynamic_cast<const Rmb*>(f);
+        if (!r) return 0;
+        return p1.eq(r->p1) && p2.eq(r->p2) && p3.eq(r->p3) && p4.eq(r->p4);
     }
 };
 
-class Pjatiugolnik : public Figura {
-private:
-    std::vector<Tochka> tochki;
+class Png : public Fig {
+    std::vector<Tchk> pts;
 
 public:
-    Pjatiugolnik() : tochki(5) {}
-    Pjatiugolnik(const std::vector<Tochka>& t) : tochki(t) {}
+    Png() : pts(5) {}
+    Png(const std::vector<Tchk>& t) : pts(t) {}
 
-    std::unique_ptr<Figura> klon() const override { 
-        return std::make_unique<Pjatiugolnik>(*this); 
+    Fig* cpy() const override { 
+        return new Png(*this); 
     }
 
-    Tochka centr() const override {
-        Tochka c;
-        for (const auto& t : tochki) {
-            c.x += t.x;
-            c.y += t.y;
+    Tchk cntr() const override {
+        Tchk c;
+        for (const auto& p : pts) {
+            c.dx += p.dx;
+            c.dy += p.dy;
         }
-        c.x /= tochki.size();
-        c.y /= tochki.size();
+        c.dx /= pts.size();
+        c.dy /= pts.size();
         return c;
     }
 
-    double ploshad() const override {
-        double s = 0;
-        for (size_t i = 0; i < tochki.size(); ++i) {
-            const auto& p1 = tochki[i];
-            const auto& p2 = tochki[(i + 1) % tochki.size()];
-            s += p1.x * p2.y - p2.x * p1.y;
+    double sqr() const override {
+        double res = 0;
+        int n = pts.size();
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n;
+            res += pts[i].dx * pts[j].dy - pts[j].dx * pts[i].dy;
         }
-        return std::abs(s) / 2;
+        return fabs(res) * 0.5;
     }
 
-    bool ravno(const Figura& other) const override {
-        auto* p = dynamic_cast<const Pjatiugolnik*>(&other);
-        if (!p) return false;
-        return tochki == p->tochki;
+    bool same(const Fig* f) const override {
+        auto p = dynamic_cast<const Png*>(f);
+        if (!p || pts.size() != p->pts.size()) return 0;
+        for (size_t i = 0; i < pts.size(); i++) {
+            if (!pts[i].eq(p->pts[i])) return 0;
+        }
+        return 1;
     }
 };
 
-class Shestiugolnik : public Figura {
-private:
-    std::vector<Tochka> tochki;
+class Shg : public Fig {
+    std::vector<Tchk> pts;
 
 public:
-    Shestiugolnik() : tochki(6) {}
-    Shestiugolnik(const std::vector<Tochka>& t) : tochki(t) {}
+    Shg() : pts(6) {}
+    Shg(const std::vector<Tchk>& t) : pts(t) {}
 
-    std::unique_ptr<Figura> klon() const override { 
-        return std::make_unique<Shestiugolnik>(*this); 
+    Fig* cpy() const override { 
+        return new Shg(*this); 
     }
 
-    Tochka centr() const override {
-        Tochka c;
-        for (const auto& t : tochki) {
-            c.x += t.x;
-            c.y += t.y;
+    Tchk cntr() const override {
+        Tchk c;
+        for (const auto& p : pts) {
+            c.dx += p.dx;
+            c.dy += p.dy;
         }
-        c.x /= tochki.size();
-        c.y /= tochki.size();
+        c.dx /= pts.size();
+        c.dy /= pts.size();
         return c;
     }
 
-    double ploshad() const override {
-        double s = 0;
-        for (size_t i = 0; i < tochki.size(); ++i) {
-            const auto& p1 = tochki[i];
-            const auto& p2 = tochki[(i + 1) % tochki.size()];
-            s += p1.x * p2.y - p2.x * p1.y;
+    double sqr() const override {
+        double res = 0;
+        int n = pts.size();
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n;
+            res += pts[i].dx * pts[j].dy - pts[j].dx * pts[i].dy;
         }
-        return std::abs(s) / 2;
+        return fabs(res) * 0.5;
     }
 
-    bool ravno(const Figura& other) const override {
-        auto* h = dynamic_cast<const Shestiugolnik*>(&other);
-        if (!h) return false;
-        return tochki == h->tochki;
+    bool same(const Fig* f) const override {
+        auto h = dynamic_cast<const Shg*>(f);
+        if (!h || pts.size() != h->pts.size()) return 0;
+        for (size_t i = 0; i < pts.size(); i++) {
+            if (!pts[i].eq(h->pts[i])) return 0;
+        }
+        return 1;
     }
 };
 
-class Kollektsiya {
-private:
-    std::vector<std::unique_ptr<Figura>> figury;
+class FArr {
+    std::vector<Fig*> arr;
 
 public:
-    void dobavit(std::unique_ptr<Figura> fig) {
-        figury.push_back(std::move(fig));
+    void add(Fig* f) {
+        arr.push_back(f);
     }
 
-    void udalit(size_t index) {
-        if (index < figury.size()) {
-            figury.erase(figury.begin() + index);
+    void del(int idx) {
+        if (idx >= 0 && idx < arr.size()) {
+            delete arr[idx];
+            arr.erase(arr.begin() + idx);
         }
     }
 
-    double obshayaPloshad() const {
+    double total() const {
         double sum = 0;
-        for (const auto& fig : figury) {
-            sum += fig->ploshad();
+        for (auto f : arr) {
+            sum += f->sqr();
         }
         return sum;
     }
 
-    size_t razmer() const {
-        return figury.size();
+    int sz() const {
+        return arr.size();
     }
 
-    const Figura* poluchit(size_t index) const {
-        if (index < figury.size()) {
-            return figury[index].get();
+    ~FArr() {
+        for (auto f : arr) {
+            delete f;
         }
-        return nullptr;
     }
 };
 
 int main() {
-    Kollektsiya kol;
+    FArr fa;
     
-    Tochka r1(0, 0), r2(5, 5), r3(10, 0), r4(5, -5);
-    kol.dobavit(std::make_unique<Romb>(r1, r2, r3, r4));
+    Tchk a1(0,0), a2(3,4), a3(6,0), a4(3,-4);
+    fa.add(new Rmb(a1,a2,a3,a4));
     
-    std::vector<Tochka> pPoints = {
-        Tochka(0, 0), Tochka(2, 1), Tochka(1, 3), 
-        Tochka(-1, 3), Tochka(-2, 1)
-    };
-    kol.dobavit(std::make_unique<Pjatiugolnik>(pPoints));
+    std::vector<Tchk> v1 = {Tchk(1,1), Tchk(3,1), Tchk(4,3), Tchk(2,5), Tchk(0,3)};
+    fa.add(new Png(v1));
     
-    std::vector<Tochka> hPoints = {
-        Tochka(0, 0), Tochka(2, 0), Tochka(3, 1),
-        Tochka(2, 2), Tochka(0, 2), Tochka(-1, 1)
-    };
-    kol.dobavit(std::make_unique<Shestiugolnik>(hPoints));
+    std::vector<Tchk> v2 = {Tchk(0,0), Tchk(2,0), Tchk(3,1), Tchk(2,2), Tchk(0,2), Tchk(-1,1)};
+    fa.add(new Shg(v2));
     
-    std::cout << "Vsego figur: " << kol.razmer() << std::endl;
-    std::cout << "Obshaya ploshad: " << kol.obshayaPloshad() << std::endl;
+    std::cout << "Cnt: " << fa.sz() << " Area: " << fa.total() << std::endl;
     
     return 0;
 }
