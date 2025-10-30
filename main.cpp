@@ -20,6 +20,7 @@ public:
     virtual double sqr() const = 0;
     virtual bool same(const Fig* f) const = 0;
     virtual Fig* cpy() const = 0;
+    virtual void info() const = 0;
 };
 
 class Rmb : public Fig {
@@ -38,8 +39,8 @@ public:
     }
 
     double sqr() const override {
-        double dd1 = hypot(p1.dx - p3.dx, p1.dy - p3.dy);
-        double dd2 = hypot(p2.dx - p4.dx, p2.dy - p4.dy);
+        double dd1 = sqrt(pow(p1.dx - p3.dx, 2) + pow(p1.dy - p3.dy, 2));
+        double dd2 = sqrt(pow(p2.dx - p4.dx, 2) + pow(p2.dy - p4.dy, 2));
         return dd1 * dd2 * 0.5;
     }
 
@@ -47,6 +48,13 @@ public:
         auto r = dynamic_cast<const Rmb*>(f);
         if (!r) return 0;
         return p1.eq(r->p1) && p2.eq(r->p2) && p3.eq(r->p3) && p4.eq(r->p4);
+    }
+
+    void info() const override {
+        std::cout << "Rmb: (" << p1.dx << "," << p1.dy << ") "
+                  << "(" << p2.dx << "," << p2.dy << ") "
+                  << "(" << p3.dx << "," << p3.dy << ") "
+                  << "(" << p4.dx << "," << p4.dy << ")\n";
     }
 };
 
@@ -90,6 +98,10 @@ public:
         }
         return 1;
     }
+
+    void info() const override {
+        std::cout << "Png with " << pts.size() << " points\n";
+    }
 };
 
 class Shg : public Fig {
@@ -132,6 +144,10 @@ public:
         }
         return 1;
     }
+
+    void info() const override {
+        std::cout << "Shg with " << pts.size() << " points\n";
+    }
 };
 
 class FArr {
@@ -161,6 +177,12 @@ public:
         return arr.size();
     }
 
+    void show() const {
+        for (auto f : arr) {
+            f->info();
+        }
+    }
+
     ~FArr() {
         for (auto f : arr) {
             delete f;
@@ -180,7 +202,8 @@ int main() {
     std::vector<Tchk> v2 = {Tchk(0,0), Tchk(2,0), Tchk(3,1), Tchk(2,2), Tchk(0,2), Tchk(-1,1)};
     fa.add(new Shg(v2));
     
-    std::cout << "Cnt: " << fa.sz() << " Area: " << fa.total() << std::endl;
+    fa.show();
+    std::cout << "Count: " << fa.sz() << " Total area: " << fa.total() << std::endl;
     
     return 0;
 }
